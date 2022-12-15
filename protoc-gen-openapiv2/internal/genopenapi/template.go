@@ -452,6 +452,7 @@ func renderMessageAsDefinition(msg *descriptor.Message, reg *descriptor.Registry
 		// Warning: Make sure not to overwrite any fields already set on the schema type.
 		schema.ExternalDocs = protoSchema.ExternalDocs
 		schema.ReadOnly = protoSchema.ReadOnly
+		schema.WriteOnly = protoSchema.WriteOnly
 		schema.MultipleOf = protoSchema.MultipleOf
 		schema.Maximum = protoSchema.Maximum
 		schema.ExclusiveMaximum = protoSchema.ExclusiveMaximum
@@ -2678,6 +2679,7 @@ func updateswaggerObjectFromJSONSchema(s *openapiSchemaObject, j *openapi_option
 		s.Items.Minimum = j.GetMinimum()
 		s.Items.Maximum = j.GetMaximum()
 		s.Items.ReadOnly = j.GetReadOnly()
+		s.Items.WriteOnly = j.GetWriteOnly()
 		s.Items.MultipleOf = j.GetMultipleOf()
 		s.Items.ExclusiveMaximum = j.GetExclusiveMaximum()
 		s.Items.ExclusiveMinimum = j.GetExclusiveMinimum()
@@ -2694,6 +2696,7 @@ func updateswaggerObjectFromJSONSchema(s *openapiSchemaObject, j *openapi_option
 		s.Minimum = j.GetMinimum()
 		s.Maximum = j.GetMaximum()
 		s.ReadOnly = j.GetReadOnly()
+		s.WriteOnly = j.GetWriteOnly()
 		s.MultipleOf = j.GetMultipleOf()
 		s.ExclusiveMaximum = j.GetExclusiveMaximum()
 		s.ExclusiveMinimum = j.GetExclusiveMinimum()
@@ -2736,6 +2739,9 @@ func updateSwaggerObjectFromFieldBehavior(s *openapiSchemaObject, j []annotation
 		case annotations.FieldBehavior_OPTIONAL:
 		case annotations.FieldBehavior_INPUT_ONLY:
 			// OpenAPI v3 supports a writeOnly property, but this is not supported in Open API v2
+			if reg.GetAllowWriteOnlyAttributes() {
+				s.WriteOnly = true
+			}
 		case annotations.FieldBehavior_IMMUTABLE:
 		}
 	}
