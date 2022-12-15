@@ -5254,6 +5254,54 @@ func TestRenderMessagesAsDefinition(t *testing.T) {
 			},
 			UseJSONNamesForFields: true,
 		},
+		{
+			descr: "JSONSchema with a read_only nested field",
+			msgDescs: []*descriptorpb.DescriptorProto{
+				{
+					Name: proto.String("Message"),
+					Field: []*descriptorpb.FieldDescriptorProto{
+						{
+							Name:     proto.String("nested"),
+							Type:     descriptorpb.FieldDescriptorProto_TYPE_MESSAGE.Enum(),
+							TypeName: proto.String(".example.Message.Nested"),
+							Number:   proto.Int32(1),
+							Options:  fieldBehaviorOutputOnlyOptions,
+						},
+					},
+					NestedType: []*descriptorpb.DescriptorProto{{
+						Name: proto.String("Nested"),
+					}},
+				},
+			},
+			schema: map[string]*openapi_options.Schema{
+				"Message": {
+					JsonSchema: &openapi_options.JSONSchema{
+						Title:       "title",
+						Description: "desc",
+						Required:    []string{},
+					},
+				},
+			},
+			defs: map[string]openapiSchemaObject{
+				"exampleMessage": {
+					schemaCore: schemaCore{
+						Type: "object",
+					},
+					Title:       "title",
+					Description: "desc",
+					Required:    nil,
+					Properties: &openapiSchemaObjectProperties{
+						{
+							Key: "nested",
+							Value: openapiSchemaObject{
+								AllOf:    []allOfEntry{{Ref: "#/definitions/MessageNested"}},
+								ReadOnly: true,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
