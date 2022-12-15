@@ -53,6 +53,7 @@ var (
 	expandSlashedPathPatterns      = flag.Bool("expand_slashed_path_patterns", false, "if set, expands path parameters with URI sub-paths into the URI. For example, \"/v1/{name=projects/*}/resource\" becomes \"/v1/projects/{project}/resource\".")
 	useProto3FieldSemantics        = flag.Bool("use_proto3_field_semantics", false, "if set, uses proto3 field semantics for the OpenAPI schema. This means that fields are required by default.")
 	generateXGoType                = flag.Bool("generate_x_go_type", false, "if set, generates x-go-type extension using the go_package option from proto files")
+	useWriteOnlyExtension          = flag.Bool("use_write_only_extension", false, "if sets the x-writeOnly extension if field is annotated as INPUT_ONLY.")
 
 	_ = flag.Bool("logtostderr", false, "Legacy glog compatibility. This flag is a no-op, you can safely remove it")
 )
@@ -179,6 +180,7 @@ func main() {
 	reg.SetEnableRpcDeprecation(*enableRpcDeprecation)
 	reg.SetExpandSlashedPathPatterns(*expandSlashedPathPatterns)
 	reg.SetGenerateXGoType(*generateXGoType)
+	reg.SetUseWriteOnlyExtension(*useWriteOnlyExtension)
 
 	if err := reg.SetRepeatedPathParamSeparator(*repeatedPathParamSeparator); err != nil {
 		emitError(err)

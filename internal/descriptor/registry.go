@@ -181,6 +181,10 @@ type Registry struct {
 
 	// generateXGoType is a global generator option for generating x-go-type annotations
 	generateXGoType bool
+
+	// useWriteOnlyExtension, if sets the x-writeOnly extension if field is annotated as
+	// INPUT_ONLY.
+	useWriteOnlyExtension bool
 }
 
 type repeatedFieldSeparator struct {
@@ -929,4 +933,14 @@ func (r *Registry) SetGenerateXGoType(generateXGoType bool) {
 
 func (r *Registry) GetGenerateXGoType() bool {
 	return r.generateXGoType
+}
+
+// SetUseWriteOnlyExtension sets allowWriteOnlyAttribute
+func (r *Registry) SetUseWriteOnlyExtension(use bool) {
+	r.useWriteOnlyExtension = use
+}
+
+// GetAllowWriteOnlyAttributes returns allowWriteOnlyAttribute
+func (r *Registry) GetUseWriteOnlyExtension() bool {
+	return r.useWriteOnlyExtension
 }
