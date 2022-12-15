@@ -140,6 +140,10 @@ type Registry struct {
 	// useAllOfForRefs, if set, will use allOf as container for $ref to preserve same-level
 	// properties
 	useAllOfForRefs bool
+
+	// useWriteOnlyExtension, if sets the x-writeOnly extension if field is annotated as
+	// INPUT_ONLY.
+	useWriteOnlyExtension bool
 }
 
 type repeatedFieldSeparator struct {
@@ -785,4 +789,14 @@ func (r *Registry) SetUseAllOfForRefs(use bool) {
 // GetUseAllOfForRefs returns useAllOfForRefs
 func (r *Registry) GetUseAllOfForRefs() bool {
 	return r.useAllOfForRefs
+}
+
+// SetUseWriteOnlyExtension sets allowWriteOnlyAttribute
+func (r *Registry) SetUseWriteOnlyExtension(use bool) {
+	r.useWriteOnlyExtension = use
+}
+
+// GetAllowWriteOnlyAttributes returns allowWriteOnlyAttribute
+func (r *Registry) GetUseWriteOnlyExtension() bool {
+	return r.useWriteOnlyExtension
 }
