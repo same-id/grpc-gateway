@@ -47,6 +47,7 @@ var (
 	useAllOfForRefs                = flag.Bool("use_allof_for_refs", false, "if set, will use allOf as container for $ref to preserve same-level properties.")
 	allowPatchFeature              = flag.Bool("allow_patch_feature", true, "whether to hide update_mask fields in PATCH requests from the generated swagger file.")
 	preserveRPCOrder               = flag.Bool("preserve_rpc_order", false, "if true, will ensure the order of paths emitted in openapi swagger files mirror the order of RPC methods found in proto files. If false, emitted paths will be ordered alphabetically.")
+	useWriteOnlyExtension          = flag.Bool("use_write_only_extension", false, "if sets the x-writeOnly extension if field is annotated as INPUT_ONLY.")
 )
 
 // Variables set by goreleaser at build time
@@ -147,6 +148,8 @@ func main() {
 	reg.SetUseAllOfForRefs(*useAllOfForRefs)
 	reg.SetAllowPatchFeature(*allowPatchFeature)
 	reg.SetPreserveRPCOrder(*preserveRPCOrder)
+	reg.SetUseWriteOnlyExtension(*useWriteOnlyExtension)
+
 	if err := reg.SetRepeatedPathParamSeparator(*repeatedPathParamSeparator); err != nil {
 		emitError(err)
 		return

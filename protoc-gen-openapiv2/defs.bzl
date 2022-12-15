@@ -72,7 +72,8 @@ def _run_proto_gen_openapi(
         openapi_configuration,
         generate_unbound_methods,
         visibility_restriction_selectors,
-        use_allof_for_refs):
+        use_allof_for_refs,
+        use_write_only_extension):
     args = actions.args()
 
     args.add("--plugin", "protoc-gen-openapiv2=%s" % protoc_gen_openapiv2.path)
@@ -141,6 +142,9 @@ def _run_proto_gen_openapi(
 
     if use_allof_for_refs:
         args.add("--openapiv2_opt", "use_allof_for_refs=true")
+
+    if use_write_only_extension:
+        args.add("--openapiv2_opt", "use_write_only_extension=true")
 
     args.add("--openapiv2_opt", "repeated_path_param_separator=%s" % repeated_path_param_separator)
 
@@ -247,6 +251,7 @@ def _proto_gen_openapi_impl(ctx):
                     generate_unbound_methods = ctx.attr.generate_unbound_methods,
                     visibility_restriction_selectors = ctx.attr.visibility_restriction_selectors,
                     use_allof_for_refs = ctx.attr.use_allof_for_refs,
+                    use_write_only_extension = ctx.attr.use_write_only_extension,
                 ),
             ),
         ),
@@ -388,6 +393,12 @@ protoc_gen_openapiv2 = rule(
             mandatory = False,
             doc = "if set, will use allOf as container for $ref to preserve" +
                   " same-level properties.",
+        ),
+        "use_write_only_extension": attr.bool(
+            default = False,
+            mandatory = False,
+            doc = "if sets the x-writeOnly extension if field is annotated as" +
+                  " INPUT_ONLY.",
         ),
         "_protoc": attr.label(
             default = "@com_google_protobuf//:protoc",

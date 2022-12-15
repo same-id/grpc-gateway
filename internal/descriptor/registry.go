@@ -154,6 +154,10 @@ type Registry struct {
 	// preserveRPCOrder, if true, will ensure the order of paths emitted in openapi swagger files mirror
 	// the order of RPC methods found in proto files. If false, emitted paths will be ordered alphabetically.
 	preserveRPCOrder bool
+
+	// useWriteOnlyExtension, if sets the x-writeOnly extension if field is annotated as
+	// INPUT_ONLY.
+	useWriteOnlyExtension bool
 }
 
 type repeatedFieldSeparator struct {
@@ -838,4 +842,14 @@ func (r *Registry) SetPreserveRPCOrder(preserve bool) {
 // IsPreserveRPCOrder returns preserveRPCOrder
 func (r *Registry) IsPreserveRPCOrder() bool {
 	return r.preserveRPCOrder
+}
+
+// SetUseWriteOnlyExtension sets allowWriteOnlyAttribute
+func (r *Registry) SetUseWriteOnlyExtension(use bool) {
+	r.useWriteOnlyExtension = use
+}
+
+// GetAllowWriteOnlyAttributes returns allowWriteOnlyAttribute
+func (r *Registry) GetUseWriteOnlyExtension() bool {
+	return r.useWriteOnlyExtension
 }
