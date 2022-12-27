@@ -498,6 +498,19 @@ func renderMessageAsDefinition(msg *descriptor.Message, reg *descriptor.Registry
 		if err != nil {
 			return openapiSchemaObject{}, err
 		}
+		if msg != nil {
+			if oneOfIndex := f.GetOneofIndex(); f.OneofIndex != nil {
+				oneOfName := msg.GetOneofDecl()[oneOfIndex].GetName()
+				if !strings.HasPrefix(oneOfName, "_") {
+					fieldSchema.extensions = append(fieldSchema.extensions, extension{
+						key: "x-protobufOneof",
+						value: json.RawMessage(
+							fmt.Sprintf(`"%s"`, oneOfName),
+						),
+					})
+				}
+			}
+		}
 		comments := fieldProtoComments(reg, msg, f)
 		if err := updateOpenAPIDataFromComments(reg, &fieldSchema, f, comments, false); err != nil {
 			return openapiSchemaObject{}, err
