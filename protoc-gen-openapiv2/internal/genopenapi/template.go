@@ -1264,6 +1264,24 @@ func renderServices(services []*descriptor.Service, paths openapiPathsObject, re
 						} else {
 							desc = fieldProtoComments(reg, bodyField.Target.Message, bodyField.Target)
 						}
+						if reg.GetUseAllOfForRefs() {
+							if schema.Ref != "" {
+								// Per the JSON Reference syntax: Any members other than "$ref" in a JSON Reference object SHALL be ignored.
+								// https://tools.ietf.org/html/draft-pbryan-zyp-json-ref-03#section-3
+								// However, use allOf to specify Title/Description/readOnly fields.
+								if schema.Title != "" || schema.Description != "" || schema.ReadOnly || len(schema.extensions) > 0 {
+									schema = openapiSchemaObject{
+										Title:       schema.Title,
+										Description: schema.Description,
+										ReadOnly:    schema.ReadOnly,
+										extensions:  schema.extensions,
+										AllOf:       []allOfEntry{{Ref: schema.Ref}},
+									}
+								} else {
+									schema = openapiSchemaObject{schemaCore: schemaCore{Ref: schema.Ref}}
+								}
+							}
+						}
 					}
 
 					if meth.GetClientStreaming() {
@@ -1508,7 +1526,31 @@ func renderServices(services []*descriptor.Service, paths openapiPathsObject, re
 								respObj.Description = resp.Description
 							}
 							if resp.Schema != nil {
-								respObj.Schema = openapiSchemaFromProtoSchema(resp.Schema, reg, customRefs, meth)
+								schema := respObj.Schema
+								openapiSchema := openapiSchemaFromProtoSchema(resp.Schema, reg, customRefs, meth)
+								schema.extensions = openapiSchema.extensions
+								if openapiSchema.extensions != nil {
+									schema.extensions = openapiSchema.extensions
+								}
+								if reg.GetUseAllOfForRefs() {
+									if schema.Ref != "" {
+										// Per the JSON Reference syntax: Any members other than "$ref" in a JSON Reference object SHALL be ignored.
+										// https://tools.ietf.org/html/draft-pbryan-zyp-json-ref-03#section-3
+										// However, use allOf to specify Title/Description/readOnly fields.
+										if schema.Title != "" || schema.Description != "" || schema.ReadOnly || len(schema.extensions) > 0 {
+											schema = openapiSchemaObject{
+												Title:       schema.Title,
+												Description: schema.Description,
+												ReadOnly:    schema.ReadOnly,
+												extensions:  schema.extensions,
+												AllOf:       []allOfEntry{{Ref: schema.Ref}},
+											}
+										} else {
+											schema = openapiSchemaObject{schemaCore: schemaCore{Ref: schema.Ref}}
+										}
+									}
+								}
+								respObj.Schema = schema
 							}
 							if resp.Examples != nil {
 								respObj.Examples = openapiExamplesFromProtoExamples(resp.Examples)
