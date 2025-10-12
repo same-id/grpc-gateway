@@ -79,7 +79,8 @@ def _run_proto_gen_openapi(
         expand_slashed_path_patterns,
         preserve_rpc_order,
         generate_x_go_type,
-        use_write_only_extension):
+        use_write_only_extension,
+        use_simple_path_params):
     args = actions.args()
 
     args.add("--plugin", "protoc-gen-openapiv2=%s" % protoc_gen_openapiv2.path)
@@ -166,6 +167,9 @@ def _run_proto_gen_openapi(
 
     if use_write_only_extension:
         args.add("--openapiv2_opt", "use_write_only_extension=true")
+
+    if use_simple_path_params:
+        args.add("--openapiv2_opt", "use_simple_path_params=true")
 
     args.add("--openapiv2_opt", "repeated_path_param_separator=%s" % repeated_path_param_separator)
 
@@ -279,6 +283,7 @@ def _proto_gen_openapi_impl(ctx):
                     preserve_rpc_order = ctx.attr.preserve_rpc_order,
                     generate_x_go_type = ctx.attr.generate_x_go_type,
                     use_write_only_extension = ctx.attr.use_write_only_extension,
+                    use_simple_path_params = ctx.attr.use_simple_path_params,
                 ),
             ),
         ),
@@ -468,6 +473,13 @@ protoc_gen_openapiv2 = rule(
             mandatory = False,
             doc = "if sets the x-writeOnly extension if field is annotated as" +
                   " INPUT_ONLY.",
+        ),
+        "use_simple_path_params": attr.bool(
+            default = False,
+            mandatory = False,
+            doc = "if set, will use simple path params. e.g." +
+                  " /v1/example/projects/{projectId}/locations/{locationId}/rest" +
+                  " instead of /v1/{name=projects/*/locations/*}/rest.",
         ),
         "_protoc": attr.label(
             default = "@com_google_protobuf//:protoc",

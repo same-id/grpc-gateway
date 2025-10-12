@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/antihax/optional v1.0.0
 	github.com/google/go-cmp v0.7.0
+	github.com/jinzhu/inflection v1.0.0
 	github.com/rogpeppe/fastuuid v1.2.0
 	go.yaml.in/yaml/v3 v3.0.4
 	golang.org/x/oauth2 v0.32.0

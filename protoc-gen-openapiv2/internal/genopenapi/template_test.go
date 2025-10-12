@@ -8557,6 +8557,172 @@ func TestRenderServicesWithBodyFieldHasRequiredField(t *testing.T) {
 	}
 }
 
+func TestRenderServicesWithSimplePathParamsMultiWordField(t *testing.T) {
+	// Regression test: a multi-word resource field (data_source -> dataSource
+	// under JSON names) combined with use_simple_path_params must rewrite the
+	// path placeholder into simple sub-path params. Previously the
+	// pathParamNames key was built from the snake_case left-hand side of
+	// path_param_name, so it never matched the camelCase placeholder emitted
+	// into the path, leaving a dangling "{dataSource}" alongside the generated
+	// project_id / data_source_id parameters.
+	jsonSchema := &openapi_options.JSONSchema{
+		FieldConfiguration: &openapi_options.JSONSchema_FieldConfiguration{
+			PathParamName: "data_source=projects/*/dataSources/*",
+		},
+	}
+	fieldOptions := new(descriptorpb.FieldOptions)
+	proto.SetExtension(fieldOptions, openapi_options.E_Openapiv2Field, jsonSchema)
+
+	reqDesc := &descriptorpb.DescriptorProto{
+		Name: proto.String("MyRequest"),
+		Field: []*descriptorpb.FieldDescriptorProto{
+			{
+				Name:    proto.String("data_source"),
+				Type:    descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				Number:  proto.Int32(1),
+				Options: fieldOptions,
+			},
+		},
+	}
+	resDesc := &descriptorpb.DescriptorProto{
+		Name: proto.String("MyResponse"),
+		Field: []*descriptorpb.FieldDescriptorProto{
+			{
+				Name:   proto.String("field"),
+				Type:   descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+				Number: proto.Int32(1),
+			},
+		},
+	}
+	meth := &descriptorpb.MethodDescriptorProto{
+		Name:       proto.String("MyMethod"),
+		InputType:  proto.String("MyRequest"),
+		OutputType: proto.String("MyResponse"),
+	}
+	svc := &descriptorpb.ServiceDescriptorProto{
+		Name:   proto.String("MyService"),
+		Method: []*descriptorpb.MethodDescriptorProto{meth},
+	}
+	reqMsg := &descriptor.Message{
+		DescriptorProto: reqDesc,
+	}
+	resMsg := &descriptor.Message{
+		DescriptorProto: resDesc,
+	}
+	reqField := &descriptor.Field{
+		Message:              reqMsg,
+		FieldDescriptorProto: reqMsg.GetField()[0],
+	}
+	resField := &descriptor.Field{
+		Message:              resMsg,
+		FieldDescriptorProto: resMsg.GetField()[0],
+	}
+	reqField.JsonName = proto.String("dataSource")
+	resField.JsonName = proto.String("field")
+	reqMsg.Fields = []*descriptor.Field{reqField}
+	resMsg.Fields = []*descriptor.Field{resField}
+
+	file := descriptor.File{
+		FileDescriptorProto: &descriptorpb.FileDescriptorProto{
+			SourceCodeInfo: &descriptorpb.SourceCodeInfo{},
+			Package:        proto.String("example"),
+			Name:           proto.String("my_service.proto"),
+			MessageType:    []*descriptorpb.DescriptorProto{reqDesc, resDesc},
+			Service:        []*descriptorpb.ServiceDescriptorProto{svc},
+			Options: &descriptorpb.FileOptions{
+				GoPackage: proto.String("github.com/grpc-ecosystem/grpc-gateway/runtime/internal/examplepb;example"),
+			},
+		},
+		GoPkg: descriptor.GoPackage{
+			Path: "example.com/path/to/example/example.pb",
+			Name: "example_pb",
+		},
+		Messages: []*descriptor.Message{reqMsg, resMsg},
+		Services: []*descriptor.Service{
+			{
+				ServiceDescriptorProto: svc,
+				Methods: []*descriptor.Method{
+					{
+						MethodDescriptorProto: meth,
+						RequestType:           reqMsg,
+						ResponseType:          resMsg,
+						Bindings: []*descriptor.Binding{
+							{
+								HTTPMethod: "POST",
+								PathTmpl: httprule.Template{
+									Version:  1,
+									OpCodes:  []int{0, 0},
+									Template: "/v1/{data_source=projects/*/dataSources/*}:refresh",
+								},
+								PathParams: []descriptor.Parameter{
+									{
+										FieldPath: descriptor.FieldPath([]descriptor.FieldPathComponent{
+											{
+												Name:   "data_source",
+												Target: reqField,
+											},
+										}),
+										Target: reqField,
+									},
+								},
+								Body: &descriptor.Body{
+									FieldPath: descriptor.FieldPath([]descriptor.FieldPathComponent{}),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	reg := descriptor.NewRegistry()
+	reg.SetUseJSONNamesForFields(true)
+	reg.SetUseSimplePathParams(true)
+	err := reg.Load(reqFromFile(&file))
+	if err != nil {
+		t.Fatalf("failed to reg.Load(): %v", err)
+	}
+	result, err := applyTemplate(param{File: crossLinkFixture(&file), reg: reg})
+	if err != nil {
+		t.Fatalf("applyTemplate(%#v) failed with %v; want success", file, err)
+	}
+
+	paths := GetPaths(result)
+	if got, want := len(paths), 1; got != want {
+		t.Fatalf("Results path length differed, got %d want %d", got, want)
+	}
+
+	wantPath := "/v1/projects/{project_id}/dataSources/{data_source_id}:refresh"
+	if got, want := paths[0], wantPath; got != want {
+		t.Fatalf("Wrong results path, got %s want %s", got, want)
+	}
+
+	operation := *result.getPathItemObject(wantPath).Post
+
+	var pathParamNames []string
+	for _, p := range operation.Parameters {
+		if p.In == "path" {
+			pathParamNames = append(pathParamNames, p.Name)
+			if p.Type != "string" {
+				t.Fatalf("Wrong path parameter type for %s, got %s want string", p.Name, p.Type)
+			}
+			if !p.Required {
+				t.Fatalf("Path parameter %s should be required", p.Name)
+			}
+		}
+	}
+
+	if got, want := len(pathParamNames), 2; got != want {
+		t.Fatalf("Path parameters length differed, got %d (%v) want %d", got, pathParamNames, want)
+	}
+	if got, want := pathParamNames[0], "project_id"; got != want {
+		t.Fatalf("Wrong first path parameter name, got %s want %s", got, want)
+	}
+	if got, want := pathParamNames[1], "data_source_id"; got != want {
+		t.Fatalf("Wrong second path parameter name, got %s want %s", got, want)
+	}
+}
+
 func TestRenderServicesWithColonInPath(t *testing.T) {
 	jsonSchema := &openapi_options.JSONSchema{
 		FieldConfiguration: &openapi_options.JSONSchema_FieldConfiguration{

@@ -21,6 +21,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/casing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/internal/descriptor"
 	openapi_options "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
+	"github.com/jinzhu/inflection"
 	"google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/genproto/googleapis/api/visibility"
 	"google.golang.org/grpc/grpclog"
@@ -1225,6 +1226,31 @@ func partsToRegexpMap(parts []string) map[string]string {
 	return regExps
 }
 
+func simplifyPathSubparts(subpartsJoined string) (string, []string) {
+	pathSubparts := strings.Split(subpartsJoined, "/")
+	paramReplacements := []string{}
+	lastPart := ""
+	newPathSubparts := []string{}
+	for _, subpart := range pathSubparts {
+		if subpart != "*" {
+			newPathSubparts = append(newPathSubparts, subpart)
+			lastPart = subpart
+			continue
+		}
+		if lastPart != "" {
+			lastPart = casing.ToSnakeCase(lastPart)
+			lastPart = inflection.Singular(lastPart)
+			paramReplacement := lastPart + "_id" // XXX - Not sure if _id suffix is appropriate in all cases
+			paramReplacements = append(paramReplacements, paramReplacement)
+			newPathSubparts = append(newPathSubparts, "{"+paramReplacement+"}")
+			lastPart = ""
+		} else {
+			panic(fmt.Sprintf("Unexpected '*' in path subparts: %s", subpartsJoined))
+		}
+	}
+	return strings.Join(newPathSubparts, "/"), paramReplacements
+}
+
 func renderServiceTags(services []*descriptor.Service, reg *descriptor.Registry) []openapiTagObject {
 	var tags []openapiTagObject
 	for _, svc := range services {
@@ -1467,29 +1493,56 @@ func renderServices(services []*descriptor.Service, paths *openapiPathsObject, r
 					if regExp, ok := pathParamRegexpMap[parameterString]; ok {
 						pattern = regExp
 					}
+					paramReplacements := []string{}
 					if fc := getFieldConfiguration(reg, parameter.Target); fc != nil {
 						pathParamName := fc.GetPathParamName()
 						if pathParamName != "" && pathParamName != parameterString {
-							pathParamNames["{"+parameterString+"}"] = "{" + pathParamName + "}"
-							parameterString, _, _ = strings.Cut(pathParamName, "=")
+							// pathParamNames must be keyed by the placeholder that
+							// actually appears in the rendered path. When
+							// useJSONNamesForFields is set, path parts are emitted using
+							// the field's JSON (camelCase) name, so the key must stay the
+							// current (camelCase) parameterString rather than the
+							// snake_case left-hand side of path_param_name. Overwriting it
+							// first caused multi-word fields (e.g. gas_station ->
+							// gasStation) to never match, leaving a dangling placeholder.
+							renamedParam, subpartsJoined, found := strings.Cut(pathParamName, "=")
+							if found && reg.GetUseSimplePathParams() {
+								var newPathSubparts string
+								newPathSubparts, paramReplacements = simplifyPathSubparts(subpartsJoined)
+								pathParamNames["{"+parameterString+"}"] = newPathSubparts
+							} else {
+								pathParamNames["{"+parameterString+"}"] = "{" + renamedParam + "}"
+							}
+							parameterString = renamedParam
 						}
 					}
-					parameters = append(parameters, openapiParameterObject{
-						Name:        parameterString,
-						Description: desc,
-						In:          "path",
-						Required:    true,
-						Default:     defaultValue,
-						// Parameters in gRPC-Gateway can only be strings?
-						Type:             paramType,
-						Format:           paramFormat,
-						Enum:             enumNames,
-						Items:            items,
-						CollectionFormat: collectionFormat,
-						MinItems:         minItems,
-						Pattern:          pattern,
-						extensions:       extensions,
-					})
+					if len(paramReplacements) > 0 {
+						for _, parameterReplacement := range paramReplacements {
+							parameters = append(parameters, openapiParameterObject{
+								Name:     parameterReplacement,
+								In:       "path",
+								Required: true,
+								Type:     "string",
+							})
+						}
+					} else {
+						parameters = append(parameters, openapiParameterObject{
+							Name:        parameterString,
+							Description: desc,
+							In:          "path",
+							Required:    true,
+							Default:     defaultValue,
+							// Parameters in gRPC-Gateway can only be strings?
+							Type:             paramType,
+							Format:           paramFormat,
+							Enum:             enumNames,
+							Items:            items,
+							CollectionFormat: collectionFormat,
+							MinItems:         minItems,
+							Pattern:          pattern,
+							extensions:       extensions,
+						})
+					}
 				}
 				// Now check if there is a body parameter
 				if b.Body != nil {

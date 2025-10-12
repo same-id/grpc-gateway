@@ -54,6 +54,7 @@ var (
 	useProto3FieldSemantics        = flag.Bool("use_proto3_field_semantics", false, "if set, uses proto3 field semantics for the OpenAPI schema. This means that fields are required by default.")
 	generateXGoType                = flag.Bool("generate_x_go_type", false, "if set, generates x-go-type extension using the go_package option from proto files")
 	useWriteOnlyExtension          = flag.Bool("use_write_only_extension", false, "if sets the x-writeOnly extension if field is annotated as INPUT_ONLY.")
+	useSimplePathParams            = flag.Bool("use_simple_path_params", false, "if set, will use simple path params. e.g. /v1/example/projects/{projectId}/locations/{locationId}/rest instead of /v1/{name=projects/*/locations/*}/rest.")
 
 	_ = flag.Bool("logtostderr", false, "Legacy glog compatibility. This flag is a no-op, you can safely remove it")
 )
@@ -181,6 +182,7 @@ func main() {
 	reg.SetExpandSlashedPathPatterns(*expandSlashedPathPatterns)
 	reg.SetGenerateXGoType(*generateXGoType)
 	reg.SetUseWriteOnlyExtension(*useWriteOnlyExtension)
+	reg.SetUseSimplePathParams(*useSimplePathParams)
 
 	if err := reg.SetRepeatedPathParamSeparator(*repeatedPathParamSeparator); err != nil {
 		emitError(err)

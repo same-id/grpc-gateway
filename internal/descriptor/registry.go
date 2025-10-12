@@ -185,6 +185,11 @@ type Registry struct {
 	// useWriteOnlyExtension, if sets the x-writeOnly extension if field is annotated as
 	// INPUT_ONLY.
 	useWriteOnlyExtension bool
+
+	// useSimplePathParams, if set, will use simple path params.
+	// e.g. /v1/example/projects/{projectId}/locations/{locationId}/rest instead
+	// of /v1/{name=projects/*/locations/*}/rest.
+	useSimplePathParams bool
 }
 
 type repeatedFieldSeparator struct {
@@ -943,4 +948,14 @@ func (r *Registry) SetUseWriteOnlyExtension(use bool) {
 // GetAllowWriteOnlyAttributes returns allowWriteOnlyAttribute
 func (r *Registry) GetUseWriteOnlyExtension() bool {
 	return r.useWriteOnlyExtension
+}
+
+// SetUseSimplePathParams sets useSimplePathParams
+func (r *Registry) SetUseSimplePathParams(use bool) {
+	r.useSimplePathParams = use
+}
+
+// GetUseSimplePathParams returns useSimplePathParams
+func (r *Registry) GetUseSimplePathParams() bool {
+	return r.useSimplePathParams
 }
